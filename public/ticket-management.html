@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Management Demo - Sistem Pengaduan Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen py-8">
+        <div class="container mx-auto px-4 max-w-6xl">
+            <h1 class="text-4xl font-bold text-center mb-8 text-gray-800">
+                🎫 Ticket Management Demo
+            </h1>
+            
+            <!-- Admin Login Section -->
+            <div id="loginSection" class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800">👨‍💼 Admin Login</h2>
+                <div class="flex space-x-4">
+                    <input type="email" id="email" value="admin@pengaduan.com" placeholder="Email" class="flex-1 px-3 py-2 border rounded-md">
+                    <input type="password" id="password" value="admin123" placeholder="Password" class="flex-1 px-3 py-2 border rounded-md">
+                    <button onclick="adminLogin()" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        🔐 Login
+                    </button>
+                </div>
+                <div id="loginStatus" class="mt-4"></div>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="adminPanel" class="hidden">
+                
+                <!-- Dashboard Stats -->
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">📊 Dashboard</h2>
+                        <button onclick="loadDashboard()" class="px-4 py-2 bg-blue-500 text-white rounded-md">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <div id="dashboardStats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                </div>
+
+                <!-- Ticket Management -->
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">🎫 Ticket Management</h2>
+                        <div class="flex space-x-2">
+                            <select id="statusFilter" onchange="loadTickets()" class="px-3 py-2 border rounded-md">
+                                <option value="all">Semua Status</option>
+                                <option value="baru">Baru</option>
+                                <option value="diproses">Diproses</option>
+                                <option value="selesai">Selesai</option>
+                            </select>
+                            <button onclick="loadTickets()" class="px-4 py-2 bg-green-500 text-white rounded-md">
+                                🔄 Reload
+                            </button>
+                            <button onclick="exportTickets()" class="px-4 py-2 bg-purple-500 text-white rounded-md">
+                                📥 Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div id="ticketsList" class="space-y-4"></div>
+                </div>
+
+                <!-- Reply Management -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">💬 Quick Reply</h2>
+                    <div class="flex space-x-4">
+                        <input type="number" id="replyTicketId" placeholder="Ticket ID" class="px-3 py-2 border rounded-md">
+                        <input type="text" id="replyMessage" placeholder="Pesan balasan..." class="flex-1 px-3 py-2 border rounded-md">
+                        <button onclick="sendReply()" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            📤 Kirim Balasan
+                        </button>
+                    </div>
+                    <div id="replyStatus" class="mt-4"></div>
+                </div>
+
+            </div>
+
+            <!-- Test Results -->
+            <div id="testResults" class="bg-white p-6 rounded-lg shadow-md mt-8">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800">🧪 Test Results</h2>
+                <div id="testOutput" class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap"></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8001/api';
+        let authToken = null;
+        
+        // Configure axios
+        axios.defaults.baseURL = API_URL;
+        axios.defaults.headers.common['Accept'] = 'application/json';
+        
+        function log(message) {
+            const output = document.getElementById('testOutput');
+            output.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            console.log(message);
+        }
+
+        async function adminLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('loginStatus');
+
+            try {
+                log('🔐 Attempting admin login...');
+                
+                const response = await axios.post('/login', { email, password });
+                authToken = response.data.data.access_token;
+                
+                // Set auth header
+                axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+                
+                statusDiv.innerHTML = `
+                    <div class="p-4 bg-green-100 text-green-800 rounded-md">
+                        ✅ Login successful! Welcome ${response.data.data.user.name}
+                    </div>
+                `;
+                
+                document.getElementById('adminPanel').classList.remove('hidden');
+                log('✅ Admin login successful: ' + response.data.data.user.name);
+                
+                // Auto load dashboard
+                await loadDashboard();
+                await loadTickets();
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || 'Login failed';
+                statusDiv.innerHTML = `
+                    <div class="p-4 bg-red-100 text-red-800 rounded-md">
+                        ❌ ${errorMsg}
+                    </div>
+                `;
+                log('❌ Login failed: ' + errorMsg);
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                log('📊 Loading dashboard stats...');
+                
+                const response = await axios.get('/admin/dashboard');
+                const stats = response.data.data.statistics;
+                
+                const statsDiv = document.getElementById('dashboardStats');
+                statsDiv.innerHTML = `
+                    <div class="bg-blue-50 p-4 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-blue-600">${stats.total_tickets}</p>
+                        <p class="text-sm text-blue-800">Total Tiket</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-yellow-600">${stats.pending_tickets}</p>
+                        <p class="text-sm text-yellow-800">Baru</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-purple-600">${stats.processed_tickets}</p>
+                        <p class="text-sm text-purple-800">Diproses</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg text-center">
+                        <p class="text-2xl font-bold text-green-600">${stats.completed_tickets}</p>
+                        <p class="text-sm text-green-800">Selesai</p>
+                    </div>
+                `;
+                
+                log('✅ Dashboard loaded successfully');
+                
+            } catch (error) {
+                log('❌ Dashboard load failed: ' + (error.response?.data?.message || error.message));
+            }
+        }
+
+        async function loadTickets() {
+            try {
+                const status = document.getElementById('statusFilter').value;
+                log(`🎫 Loading tickets (status: ${status})...`);
+                
+                const params = status !== 'all' ? { status } : {};
+                const response = await axios.get('/admin/tickets', { params });
+                const tickets = response.data.data.data;
+                
+                const ticketsDiv = document.getElementById('ticketsList');
+                
+                if (tickets.length === 0) {
+                    ticketsDiv.innerHTML = '<p class="text-gray-500 text-center py-8">Tidak ada tiket</p>';
+                    return;
+                }
+                
+                ticketsDiv.innerHTML = tickets.map(ticket => {
+                    const statusColors = {
+                        'baru': 'bg-yellow-100 text-yellow-800',
+                        'diproses': 'bg-blue-100 text-blue-800',
+                        'selesai': 'bg-green-100 text-green-800'
+                    };
+                    
+                    return `
+                        <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="font-bold text-lg">${ticket.ticket_number}</h3>
+                                    <p class="text-gray-600">👤 ${ticket.name} | 📞 ${ticket.phone}</p>
+                                    <p class="text-gray-600">📂 ${ticket.category}</p>
+                                </div>
+                                <span class="px-3 py-1 rounded-full text-sm font-medium ${statusColors[ticket.status]}">
+                                    ${ticket.status.toUpperCase()}
+                                </span>
+                            </div>
+                            <p class="text-gray-700 mb-3">${ticket.message}</p>
+                            <div class="flex justify-between items-center">
+                                <small class="text-gray-500">📅 ${new Date(ticket.created_at).toLocaleString('id-ID')}</small>
+                                <div class="space-x-2">
+                                    <select id="status_${ticket.id}" class="px-2 py-1 border rounded text-sm">
+                                        <option value="baru" ${ticket.status === 'baru' ? 'selected' : ''}>Baru</option>
+                                        <option value="diproses" ${ticket.status === 'diproses' ? 'selected' : ''}>Diproses</option>
+                                        <option value="selesai" ${ticket.status === 'selesai' ? 'selected' : ''}>Selesai</option>
+                                    </select>
+                                    <button onclick="updateTicketStatus(${ticket.id})" class="px-3 py-1 bg-blue-500 text-white rounded text-sm">
+                                        🔄 Update
+                                    </button>
+                                    <button onclick="deleteTicket(${ticket.id})" class="px-3 py-1 bg-red-500 text-white rounded text-sm">
+                                        🗑️ Hapus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                log(`✅ Loaded ${tickets.length} tickets`);
+                
+            } catch (error) {
+                log('❌ Tickets load failed: ' + (error.response?.data?.message || error.message));
+            }
+        }
+
+        async function updateTicketStatus(ticketId) {
+            try {
+                const statusSelect = document.getElementById(`status_${ticketId}`);
+                const newStatus = statusSelect.value;
+                
+                log(`🔄 Updating ticket ${ticketId} status to ${newStatus}...`);
+                
+                await axios.put(`/admin/tickets/${ticketId}/status`, {
+                    status: newStatus
+                });
+                
+                log(`✅ Ticket ${ticketId} status updated to ${newStatus}`);
+                await loadTickets(); // Reload tickets
+                await loadDashboard(); // Refresh stats
+                
+            } catch (error) {
+                log('❌ Status update failed: ' + (error.response?.data?.message || error.message));
+            }
+        }
+
+        async function deleteTicket(ticketId) {
+            if (!confirm('Yakin ingin menghapus tiket ini?')) return;
+            
+            try {
+                log(`🗑️ Deleting ticket ${ticketId}...`);
+                
+                await axios.delete(`/admin/tickets/${ticketId}`);
+                
+                log(`✅ Ticket ${ticketId} deleted successfully`);
+                await loadTickets(); // Reload tickets
+                await loadDashboard(); // Refresh stats
+                
+            } catch (error) {
+                log('❌ Delete failed: ' + (error.response?.data?.message || error.message));
+            }
+        }
+
+        async function sendReply() {
+            try {
+                const ticketId = document.getElementById('replyTicketId').value;
+                const message = document.getElementById('replyMessage').value;
+                const statusDiv = document.getElementById('replyStatus');
+                
+                if (!ticketId || !message) {
+                    statusDiv.innerHTML = '<div class="p-2 bg-yellow-100 text-yellow-800 rounded">Ticket ID dan pesan harus diisi</div>';
+                    return;
+                }
+                
+                log(`💬 Sending reply to ticket ${ticketId}...`);
+                
+                const response = await axios.post('/replies', {
+                    ticket_id: ticketId,
+                    message: message
+                });
+                
+                statusDiv.innerHTML = '<div class="p-2 bg-green-100 text-green-800 rounded">✅ Balasan berhasil dikirim!</div>';
+                
+                // Clear form
+                document.getElementById('replyTicketId').value = '';
+                document.getElementById('replyMessage').value = '';
+                
+                log(`✅ Reply sent to ticket ${ticketId}`);
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('replyStatus').innerHTML = `<div class="p-2 bg-red-100 text-red-800 rounded">❌ ${errorMsg}</div>`;
+                log('❌ Reply failed: ' + errorMsg);
+            }
+        }
+
+        async function exportTickets() {
+            try {
+                log('📥 Exporting tickets to CSV...');
+                
+                const response = await axios.get('/admin/export-tickets');
+                const data = response.data.data;
+                
+                // Convert CSV data to downloadable file
+                const csvContent = data.csv_data.map(row => row.join(',')).join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = data.filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                log(`✅ Export completed: ${data.filename}`);
+                
+            } catch (error) {
+                log('❌ Export failed: ' + (error.response?.data?.message || error.message));
+            }
+        }
+
+        // Initialize
+        log('🚀 Ticket Management Demo initialized');
+        log('📝 Features available:');
+        log('  - Admin login & authentication');
+        log('  - Dashboard statistics');
+        log('  - Ticket listing with filters');
+        log('  - Status management');
+        log('  - Ticket deletion');
+        log('  - Reply system');
+        log('  - CSV export');
+        log('');
+        log('🔐 Please login as admin to start testing...');
+    </script>
+</body>
+</html>

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Notifications Demo - Sistem Pengaduan Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen py-8">
+        <div class="container mx-auto px-4 max-w-6xl">
+            <h1 class="text-4xl font-bold text-center mb-8 text-gray-800">
+                📱 WhatsApp Notifications Demo
+            </h1>
+            
+            <!-- Admin Login Section -->
+            <div id="loginSection" class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800">👨‍💼 Admin Login</h2>
+                <div class="flex space-x-4">
+                    <input type="email" id="email" value="admin@pengaduan.com" placeholder="Email" class="flex-1 px-3 py-2 border rounded-md">
+                    <input type="password" id="password" value="admin123" placeholder="Password" class="flex-1 px-3 py-2 border rounded-md">
+                    <button onclick="adminLogin()" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        🔐 Login
+                    </button>
+                </div>
+                <div id="loginStatus" class="mt-4"></div>
+            </div>
+
+            <!-- Admin WhatsApp Panel -->
+            <div id="whatsappPanel" class="hidden">
+                
+                <!-- WhatsApp Settings -->
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">⚙️ WhatsApp Settings</h2>
+                        <button onclick="loadWhatsAppSettings()" class="px-4 py-2 bg-blue-500 text-white rounded-md">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <div id="whatsappSettings" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    
+                    <!-- Test Connection -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-bold mb-4 text-gray-800">🧪 Test Connection</h3>
+                        <button onclick="testWhatsAppConnection()" class="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
+                            📡 Test WhatsApp Connection
+                        </button>
+                        <div id="testConnectionResult" class="mt-4"></div>
+                    </div>
+
+                    <!-- Daily Summary -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-bold mb-4 text-gray-800">📊 Daily Summary</h3>
+                        <button onclick="sendDailySummary()" class="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                            📤 Send Daily Summary
+                        </button>
+                        <div id="dailySummaryResult" class="mt-4"></div>
+                    </div>
+
+                    <!-- Custom Message -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-bold mb-4 text-gray-800">📢 Custom Message</h3>
+                        <textarea id="customMessage" placeholder="Tulis pesan custom..." class="w-full px-3 py-2 border rounded-md mb-2" rows="3"></textarea>
+                        <button onclick="sendCustomMessage()" class="w-full px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600">
+                            📨 Send Custom Message
+                        </button>
+                        <div id="customMessageResult" class="mt-4"></div>
+                    </div>
+                </div>
+
+                <!-- Ticket Notifications -->
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">🎫 Ticket Notifications</h2>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- Resend Ticket Notification -->
+                        <div class="border rounded-lg p-4">
+                            <h3 class="font-bold mb-2">🔄 Resend Ticket Notification</h3>
+                            <div class="flex space-x-2">
+                                <input type="number" id="ticketIdResend" placeholder="Ticket ID" class="flex-1 px-3 py-2 border rounded-md">
+                                <button onclick="resendTicketNotification()" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600">
+                                    🔔 Resend
+                                </button>
+                            </div>
+                            <div id="resendResult" class="mt-2"></div>
+                        </div>
+
+                        <!-- Test User Notification -->
+                        <div class="border rounded-lg p-4">
+                            <h3 class="font-bold mb-2">👤 Test User Notification</h3>
+                            <div class="space-y-2">
+                                <input type="text" id="testUserPhone" placeholder="Phone number (08123456789)" class="w-full px-3 py-2 border rounded-md">
+                                <button onclick="testUserNotification()" class="w-full px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600">
+                                    📱 Send Test to User
+                                </button>
+                            </div>
+                            <div id="testUserResult" class="mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create New Ticket (to trigger admin notification) -->
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">🆕 Create Test Ticket (Trigger Admin Notification)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="newTicketName" value="Test User WhatsApp" placeholder="Nama" class="px-3 py-2 border rounded-md">
+                        <input type="text" id="newTicketPhone" value="081234567890" placeholder="Telepon" class="px-3 py-2 border rounded-md">
+                        <input type="email" id="newTicketEmail" value="test@whatsapp.com" placeholder="Email" class="px-3 py-2 border rounded-md">
+                        <select id="newTicketCategory" class="px-3 py-2 border rounded-md">
+                            <option value="Layanan Publik">Layanan Publik</option>
+                            <option value="Infrastruktur">Infrastruktur</option>
+                            <option value="Keamanan">Keamanan</option>
+                            <option value="Lingkungan">Lingkungan</option>
+                        </select>
+                    </div>
+                    <textarea id="newTicketMessage" placeholder="Deskripsi pengaduan untuk test notifikasi WhatsApp..." class="w-full px-3 py-2 border rounded-md mt-4" rows="3">Test pengaduan untuk memicu notifikasi WhatsApp ke admin. Pesan ini akan memicu notifikasi realtime ke admin via WhatsApp.</textarea>
+                    <button onclick="createTestTicket()" class="mt-4 px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600">
+                        🚨 Create Ticket & Trigger Admin Notification
+                    </button>
+                    <div id="createTicketResult" class="mt-4"></div>
+                </div>
+
+                <!-- WhatsApp Logs -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">📋 WhatsApp Logs</h2>
+                        <button onclick="loadWhatsAppLogs()" class="px-4 py-2 bg-gray-500 text-white rounded-md">
+                            🔄 Refresh Logs
+                        </button>
+                    </div>
+                    <div id="whatsappLogs" class="bg-gray-50 p-4 rounded-md font-mono text-sm max-h-96 overflow-y-auto"></div>
+                </div>
+
+            </div>
+
+            <!-- Test Results -->
+            <div id="testResults" class="bg-white p-6 rounded-lg shadow-md mt-8">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800">🧪 Test Results</h2>
+                <div id="testOutput" class="bg-gray-50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap max-h-96 overflow-y-auto"></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8001/api';
+        let authToken = null;
+        
+        // Configure axios
+        axios.defaults.baseURL = API_URL;
+        axios.defaults.headers.common['Accept'] = 'application/json';
+        
+        function log(message) {
+            const output = document.getElementById('testOutput');
+            output.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        async function adminLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('loginStatus');
+
+            try {
+                log('🔐 Attempting admin login...');
+                
+                const response = await axios.post('/login', { email, password });
+                authToken = response.data.data.access_token;
+                
+                // Set auth header
+                axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+                
+                statusDiv.innerHTML = `
+                    <div class="p-4 bg-green-100 text-green-800 rounded-md">
+                        ✅ Login successful! Welcome ${response.data.data.user.name}
+                    </div>
+                `;
+                
+                document.getElementById('whatsappPanel').classList.remove('hidden');
+                log('✅ Admin login successful: ' + response.data.data.user.name);
+                
+                // Auto load WhatsApp settings
+                await loadWhatsAppSettings();
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || 'Login failed';
+                statusDiv.innerHTML = `
+                    <div class="p-4 bg-red-100 text-red-800 rounded-md">
+                        ❌ ${errorMsg}
+                    </div>
+                `;
+                log('❌ Login failed: ' + errorMsg);
+            }
+        }
+
+        async function loadWhatsAppSettings() {
+            try {
+                log('⚙️ Loading WhatsApp settings...');
+                
+                const response = await axios.get('/whatsapp/settings');
+                const settings = response.data.data;
+                
+                const settingsDiv = document.getElementById('whatsappSettings');
+                settingsDiv.innerHTML = `
+                    <div class="bg-${settings.fonnte_configured ? 'green' : 'red'}-50 p-4 rounded-lg">
+                        <p class="font-bold">Fonnte Token</p>
+                        <p class="text-sm">${settings.fonnte_configured ? '✅ Configured' : '❌ Not configured'}</p>
+                    </div>
+                    <div class="bg-${settings.admin_phone_configured ? 'green' : 'red'}-50 p-4 rounded-lg">
+                        <p class="font-bold">Admin Phone</p>
+                        <p class="text-sm">${settings.admin_phone_configured ? '✅ ' + settings.admin_phone : '❌ Not configured'}</p>
+                    </div>
+                    <div class="bg-${settings.notifications_enabled ? 'green' : 'red'}-50 p-4 rounded-lg col-span-2">
+                        <p class="font-bold">Notifications Status</p>
+                        <p class="text-sm">${settings.notifications_enabled ? '✅ Enabled & Ready' : '❌ Disabled (missing config)'}</p>
+                    </div>
+                `;
+                
+                log('✅ WhatsApp settings loaded');
+                
+            } catch (error) {
+                log('❌ Settings load failed: ' + (error.response?.data?.message || error.message));
+            }
+        }
+
+        async function testWhatsAppConnection() {
+            try {
+                log('🧪 Testing WhatsApp connection...');
+                document.getElementById('testConnectionResult').innerHTML = '<div class="text-blue-600">⏳ Sending test message...</div>';
+                
+                const response = await axios.post('/whatsapp/test-connection');
+                const result = response.data.data;
+                
+                const resultDiv = document.getElementById('testConnectionResult');
+                if (result.sent) {
+                    resultDiv.innerHTML = '<div class="text-green-600">✅ Test message sent successfully!</div>';
+                    log('✅ WhatsApp connection test successful');
+                } else {
+                    resultDiv.innerHTML = '<div class="text-red-600">❌ Failed to send test message</div>';
+                    log('❌ WhatsApp connection test failed');
+                }
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('testConnectionResult').innerHTML = `<div class="text-red-600">❌ ${errorMsg}</div>`;
+                log('❌ Connection test failed: ' + errorMsg);
+            }
+        }
+
+        async function sendDailySummary() {
+            try {
+                log('📊 Sending daily summary...');
+                document.getElementById('dailySummaryResult').innerHTML = '<div class="text-blue-600">⏳ Sending summary...</div>';
+                
+                const response = await axios.post('/whatsapp/send-daily-summary');
+                const result = response.data.data;
+                
+                const resultDiv = document.getElementById('dailySummaryResult');
+                if (result.sent) {
+                    resultDiv.innerHTML = '<div class="text-green-600">✅ Daily summary sent!</div>';
+                    log('✅ Daily summary sent successfully');
+                } else {
+                    resultDiv.innerHTML = '<div class="text-red-600">❌ Failed to send summary</div>';
+                    log('❌ Daily summary send failed');
+                }
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('dailySummaryResult').innerHTML = `<div class="text-red-600">❌ ${errorMsg}</div>`;
+                log('❌ Daily summary failed: ' + errorMsg);
+            }
+        }
+
+        async function sendCustomMessage() {
+            try {
+                const message = document.getElementById('customMessage').value;
+                if (!message) {
+                    document.getElementById('customMessageResult').innerHTML = '<div class="text-yellow-600">⚠️ Please enter a message</div>';
+                    return;
+                }
+                
+                log('📢 Sending custom message...');
+                document.getElementById('customMessageResult').innerHTML = '<div class="text-blue-600">⏳ Sending message...</div>';
+                
+                const response = await axios.post('/whatsapp/send-custom-message', { message });
+                const result = response.data.data;
+                
+                const resultDiv = document.getElementById('customMessageResult');
+                if (result.sent) {
+                    resultDiv.innerHTML = '<div class="text-green-600">✅ Custom message sent!</div>';
+                    log('✅ Custom message sent: ' + message.substring(0, 50) + '...');
+                    document.getElementById('customMessage').value = '';
+                } else {
+                    resultDiv.innerHTML = '<div class="text-red-600">❌ Failed to send message</div>';
+                    log('❌ Custom message send failed');
+                }
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('customMessageResult').innerHTML = `<div class="text-red-600">❌ ${errorMsg}</div>`;
+                log('❌ Custom message failed: ' + errorMsg);
+            }
+        }
+
+        async function resendTicketNotification() {
+            try {
+                const ticketId = document.getElementById('ticketIdResend').value;
+                if (!ticketId) {
+                    document.getElementById('resendResult').innerHTML = '<div class="text-yellow-600">⚠️ Enter ticket ID</div>';
+                    return;
+                }
+                
+                log(`🔄 Resending notification for ticket ${ticketId}...`);
+                document.getElementById('resendResult').innerHTML = '<div class="text-blue-600">⏳ Resending...</div>';
+                
+                const response = await axios.post(`/whatsapp/resend-ticket-notification/${ticketId}`);
+                const result = response.data.data;
+                
+                const resultDiv = document.getElementById('resendResult');
+                if (result.sent) {
+                    resultDiv.innerHTML = `<div class="text-green-600">✅ Notification resent for ${result.ticket_number}!</div>`;
+                    log(`✅ Notification resent for ticket ${result.ticket_number}`);
+                } else {
+                    resultDiv.innerHTML = '<div class="text-red-600">❌ Failed to resend</div>';
+                    log('❌ Notification resend failed');
+                }
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('resendResult').innerHTML = `<div class="text-red-600">❌ ${errorMsg}</div>`;
+                log('❌ Resend failed: ' + errorMsg);
+            }
+        }
+
+        async function testUserNotification() {
+            try {
+                const phone = document.getElementById('testUserPhone').value;
+                if (!phone) {
+                    document.getElementById('testUserResult').innerHTML = '<div class="text-yellow-600">⚠️ Enter phone number</div>';
+                    return;
+                }
+                
+                log(`📱 Sending test notification to ${phone}...`);
+                document.getElementById('testUserResult').innerHTML = '<div class="text-blue-600">⏳ Sending...</div>';
+                
+                const response = await axios.post('/whatsapp/test-user-notification', { phone });
+                const result = response.data.data;
+                
+                const resultDiv = document.getElementById('testUserResult');
+                if (result.sent) {
+                    resultDiv.innerHTML = '<div class="text-green-600">✅ Test notification sent!</div>';
+                    log(`✅ Test notification sent to ${phone}`);
+                } else {
+                    resultDiv.innerHTML = '<div class="text-red-600">❌ Failed to send</div>';
+                    log('❌ User notification test failed');
+                }
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('testUserResult').innerHTML = `<div class="text-red-600">❌ ${errorMsg}</div>`;
+                log('❌ User notification test failed: ' + errorMsg);
+            }
+        }
+
+        async function createTestTicket() {
+            try {
+                const data = {
+                    name: document.getElementById('newTicketName').value,
+                    phone: document.getElementById('newTicketPhone').value,
+                    email: document.getElementById('newTicketEmail').value,
+                    category: document.getElementById('newTicketCategory').value,
+                    message: document.getElementById('newTicketMessage').value
+                };
+                
+                log('🆕 Creating test ticket to trigger admin notification...');
+                document.getElementById('createTicketResult').innerHTML = '<div class="text-blue-600">⏳ Creating ticket...</div>';
+                
+                // Remove auth header temporarily for public endpoint
+                const tempToken = axios.defaults.headers.common['Authorization'];
+                delete axios.defaults.headers.common['Authorization'];
+                
+                const response = await axios.post('/tickets', data);
+                
+                // Restore auth header
+                axios.defaults.headers.common['Authorization'] = tempToken;
+                
+                const result = response.data.data;
+                
+                const resultDiv = document.getElementById('createTicketResult');
+                resultDiv.innerHTML = `
+                    <div class="text-green-600">
+                        ✅ Ticket created: ${result.ticket.ticket_number}<br>
+                        📱 WhatsApp notification: ${result.whatsapp_sent ? '✅ Sent' : '❌ Failed'}
+                    </div>
+                `;
+                
+                log(`✅ Test ticket created: ${result.ticket.ticket_number} (WhatsApp: ${result.whatsapp_sent ? 'Sent' : 'Failed'})`);
+                
+            } catch (error) {
+                // Restore auth header on error
+                if (authToken) {
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('createTicketResult').innerHTML = `<div class="text-red-600">❌ ${errorMsg}</div>`;
+                log('❌ Test ticket creation failed: ' + errorMsg);
+            }
+        }
+
+        async function loadWhatsAppLogs() {
+            try {
+                log('📋 Loading WhatsApp logs...');
+                
+                const response = await axios.get('/whatsapp/logs');
+                const data = response.data.data;
+                
+                const logsDiv = document.getElementById('whatsappLogs');
+                if (data.logs && data.logs.length > 0) {
+                    logsDiv.innerHTML = data.logs.join('\n');
+                    log(`✅ Loaded ${data.whatsapp_logs_found} WhatsApp log entries`);
+                } else {
+                    logsDiv.innerHTML = 'No WhatsApp logs found';
+                    log('ℹ️ No WhatsApp logs found');
+                }
+                
+            } catch (error) {
+                const errorMsg = error.response?.data?.message || error.message;
+                document.getElementById('whatsappLogs').innerHTML = `Error loading logs: ${errorMsg}`;
+                log('❌ Logs load failed: ' + errorMsg);
+            }
+        }
+
+        // Initialize
+        log('📱 WhatsApp Notifications Demo initialized');
+        log('📝 Features available:');
+        log('  - Test WhatsApp connection to admin');
+        log('  - Send daily summary reports');
+        log('  - Send custom messages to admin');
+        log('  - Resend ticket notifications');
+        log('  - Test user notifications');
+        log('  - Create test tickets (triggers admin notification)');
+        log('  - View WhatsApp logs');
+        log('');
+        log('🔐 Please login as admin to start testing...');
+    </script>
+</body>
+</html>
